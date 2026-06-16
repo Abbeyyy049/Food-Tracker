@@ -1,1 +1,649 @@
 # Food-Tracker
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1e293b">
+<title>🧂 調味料管理</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: -apple-system, "Segoe UI", sans-serif; background: #f1f5f9; min-height: 100vh; max-width: 680px; margin: 0 auto; padding-bottom: 100px; }
+  button { cursor: pointer; font-family: inherit; }
+  input, select, textarea { font-family: inherit; }
+
+  /* Header */
+  .header { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); padding: 52px 20px 20px; color: white; position: sticky; top: 0; z-index: 10; }
+  .header h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
+  .header .sub { font-size: 12px; color: #94a3b8; margin-top: 3px; }
+  .badges { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .badge { border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 600; color: white; }
+  .badge-red { background: #ef4444; }
+  .badge-orange { background: #f97316; }
+
+  /* Tabs */
+  .tabs { display: flex; background: white; border-bottom: 1px solid #e2e8f0; position: sticky; top: 108px; z-index: 9; }
+  .tab { flex: 1; padding: 13px 4px; border: none; background: none; font-size: 12px; font-weight: 400; color: #94a3b8; border-bottom: 2px solid transparent; white-space: nowrap; }
+  .tab.active { font-weight: 700; color: #1e293b; border-bottom-color: #1e293b; }
+
+  /* Cards */
+  .card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 10px; transition: border-color 0.15s; }
+  .card.editing { border-color: #1e293b; }
+  .card-body { padding: 12px 14px; display: flex; gap: 12px; align-items: flex-start; }
+  .card-icon { font-size: 18px; margin-top: 2px; flex-shrink: 0; }
+  .card-info { flex: 1; min-width: 0; }
+  .card-name { font-weight: 600; font-size: 14px; color: #1e293b; }
+  .card-sub { font-size: 12px; color: #94a3b8; margin-top: 1px; }
+  .card-tags { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; align-items: center; }
+  .tag { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+  .card-note { font-size: 12px; color: "#f97316"; margin-top: 5px; }
+  .card-action-tip { font-size: 12px; color: #f97316; font-weight: 500; margin-top: 5px; }
+  .card-notes-text { font-size: 12px; color: #94a3b8; margin-top: 3px; }
+  .edit-btn { border: none; padding: 6px 10px; border-radius: 8px; font-size: 12px; flex-shrink: 0; }
+
+  /* Edit panel */
+  .edit-panel { padding: 0 14px 14px; border-top: 1px solid #f1f5f9; }
+  .edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+  .edit-field { display: flex; flex-direction: column; gap: 4px; }
+  .edit-field.full { grid-column: 1/-1; }
+  .edit-label { font-size: 11px; color: #94a3b8; }
+  .edit-input { padding: 7px 10px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; width: 100%; }
+  .edit-checks { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+  .edit-checks label { font-size: 12px; display: flex; align-items: center; gap: 5px; }
+  .edit-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
+  .btn-save { flex: 1; min-width: 70px; padding: 9px; background: #1e293b; color: white; border: none; border-radius: 8px; font-weight: 600; font-size: 13px; }
+  .btn-delete { padding: 9px 14px; background: #fef2f2; color: #ef4444; border: none; border-radius: 8px; font-size: 13px; }
+  .btn-delete-confirm { padding: 9px 12px; background: #ef4444; color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; }
+  .btn-cancel-delete { padding: 9px 12px; background: #f1f5f9; color: #475569; border: none; border-radius: 8px; font-size: 13px; }
+  .delete-confirm-text { font-size: 13px; color: #ef4444; }
+
+  /* Filters */
+  .filter-scroll { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; }
+  .filter-scroll::-webkit-scrollbar { display: none; }
+  .chip { white-space: nowrap; padding: 6px 14px; border-radius: 20px; border: 1px solid #e2e8f0; background: white; color: #475569; font-size: 13px; }
+  .chip.active { border-color: #1e293b; background: #1e293b; color: white; }
+  .chip-sm { padding: 5px 12px; font-size: 12px; border: 1px solid #e2e8f0; border-radius: 20px; background: white; color: #64748b; white-space: nowrap; }
+  .chip-sm.active { border-color: #475569; background: #475569; color: white; }
+
+  /* Search */
+  .search-input { width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 14px; }
+
+  /* Add buttons */
+  .add-row { display: flex; gap: 10px; margin-top: 16px; }
+  .btn-primary { flex: 1; padding: 14px; border: none; border-radius: 12px; background: #1e293b; color: white; font-size: 14px; font-weight: 700; }
+  .btn-secondary { padding: 14px 18px; border: 2px dashed #cbd5e1; border-radius: 12px; background: white; color: #64748b; font-size: 15px; }
+
+  /* Import panel */
+  .panel { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-top: 10px; }
+  .panel-title { font-weight: 700; margin-bottom: 6px; font-size: 15px; }
+  .panel-sub { font-size: 12px; color: #64748b; margin-bottom: 10px; line-height: 1.6; }
+  .import-textarea { width: 100%; height: 120px; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; font-family: monospace; resize: vertical; }
+  .error-msg { color: #ef4444; font-size: 13px; margin-top: 6px; }
+  .btn-parse { width: 100%; margin-top: 10px; padding: 10px; background: #475569; color: white; border: none; border-radius: 8px; font-weight: 600; font-size: 14px; }
+  .preview-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 14px; margin-top: 10px; }
+  .preview-title { font-weight: 700; color: #15803d; margin-bottom: 8px; font-size: 14px; }
+  .preview-item { background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; font-size: 13px; }
+  .preview-item strong { font-weight: 600; }
+  .preview-item span { color: #64748b; margin-left: 8px; }
+  .btn-confirm { flex: 1; padding: 10px; background: #1e293b; color: white; border: none; border-radius: 8px; font-weight: 600; }
+  .btn-reset { padding: 10px 14px; background: #f1f5f9; color: #475569; border: none; border-radius: 8px; }
+  .btn-close { width: 100%; margin-top: 8px; padding: 9px; background: white; color: #94a3b8; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; }
+
+  /* Alert panel */
+  .alert-group { margin-bottom: 20px; }
+  .alert-group-title { font-weight: 700; font-size: 15px; margin-bottom: 10px; color: #1e293b; }
+  .alert-card { border-radius: 12px; padding: 14px; margin-bottom: 8px; border: 1px solid; }
+  .alert-row { display: flex; justify-content: space-between; align-items: flex-start; }
+  .alert-name { font-weight: 600; font-size: 14px; }
+  .alert-en { font-size: 12px; color: #64748b; }
+  .alert-days { font-size: 12px; font-weight: 700; }
+  .alert-tip { margin-top: 8px; background: white; border-radius: 8px; padding: 8px 10px; font-size: 13px; font-weight: 500; }
+  .alert-note { margin-top: 6px; font-size: 12px; color: #64748b; }
+  .btn-done-delete { margin-top: 10px; width: 100%; padding: 8px; background: #ef4444; color: white; border: none; border-radius: 8px; font-weight: 600; font-size: 13px; }
+  .btn-done { margin-top: 10px; width: 100%; padding: 8px; background: white; color: #475569; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; }
+
+  /* Dupe panel */
+  .dupe-group { background: white; border: 1px solid #fde68a; border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+  .dupe-title { font-weight: 700; font-size: 14px; color: #92400e; margin-bottom: 10px; }
+  .dupe-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: #fffbeb; border-radius: 8px; margin-bottom: 6px; }
+  .dupe-info { flex: 1; min-width: 0; }
+  .dupe-name { font-size: 13px; font-weight: 600; }
+  .dupe-meta { font-size: 11px; color: #94a3b8; margin-top: 1px; }
+  .dupe-status { font-size: 11px; margin-top: 2px; }
+  .btn-dupe-del { margin-left: 10px; flex-shrink: 0; padding: 6px 12px; background: #fef2f2; color: #ef4444; border: 1px solid #fecaca; border-radius: 8px; font-size: 12px; font-weight: 600; }
+  .dupe-hint { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+
+  /* Empty state */
+  .empty { text-align: center; padding: 48px 20px; color: #94a3b8; }
+  .empty-icon { font-size: 40px; }
+  .empty-text { margin-top: 10px; font-weight: 600; }
+
+  /* Section padding */
+  .section { padding: 16px; }
+
+  /* Form */
+  .form-field { margin-bottom: 10px; }
+  .form-label { font-size: 12px; color: #64748b; margin-bottom: 4px; display: block; }
+  .form-input { width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; }
+  .form-checks { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+  .form-checks label { font-size: 13px; display: flex; align-items: center; gap: 6px; }
+  .form-actions { display: flex; gap: 8px; }
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+// ── Constants ─────────────────────────────────────────────────────────────────
+const STORAGE_KEY = 'condiment_items_v1';
+const TODAY = new Date();
+TODAY.setHours(0,0,0,0);
+
+const CATEGORIES = ['全部','醬油','亞洲醬料','日式調味','西式醬料','沙拉醬','香料醬','食用油','甜味劑'];
+const CATEGORY_OPTIONS = CATEGORIES.filter(c => c !== '全部');
+
+const STATUS = { EXPIRED_DANGER:'expired_danger', EXPIRED_MAYBE:'expired_maybe', EXPIRING_SOON:'expiring_soon', OK:'ok', UNKNOWN:'unknown' };
+const STATUS_CFG = {
+  expired_danger: { label:'已過期', color:'#ef4444', bg:'#fef2f2', border:'#fecaca', icon:'🔴' },
+  expired_maybe:  { label:'過期但看情況', color:'#f97316', bg:'#fff7ed', border:'#fed7aa', icon:'🟠' },
+  expiring_soon:  { label:'即將到期', color:'#eab308', bg:'#fefce8', border:'#fde68a', icon:'🟡' },
+  ok:             { label:'狀態良好', color:'#22c55e', bg:'#f0fdf4', border:'#bbf7d0', icon:'🟢' },
+  unknown:        { label:'待確認', color:'#94a3b8', bg:'#f8fafc', border:'#e2e8f0', icon:'⚪' },
+};
+
+const DEFAULT_DATA = [
+  { id:1, name:'Coles Sweet Chilli Sauce', nameZh:'甜辣醬', category:'亞洲醬料', expiryDate:'2027-03-04', amount:'大部分', opened:true, action:null, maybeOk:false, notes:'未開封狀態良好' },
+  { id:2, name:'Kewpie Roasted Sesame Dressing', nameZh:'丘比烤芝麻沙拉醬', category:'沙拉醬', expiryDate:'2025-10-18', amount:'約一半', opened:true, action:'丟掉', maybeOk:false, notes:'過期超過8個月，建議直接丟棄' },
+  { id:3, name:'龍宏 辣豆瓣醬', nameZh:'辣豆瓣醬', category:'亞洲醬料', expiryDate:'2025-07-05', amount:'約一半', opened:true, action:'丟掉', maybeOk:false, notes:'過期約1年，建議丟棄' },
+  { id:4, name:'Pixian Bean Paste', nameZh:'紅油郫縣豆瓣醬', category:'亞洲醬料', expiryDate:'2026-03-29', amount:'大部分', opened:true, action:'丟掉', maybeOk:false, notes:'過期約3個月，建議丟棄' },
+  { id:5, name:'Coles Garlic Paste', nameZh:'蒜泥', category:'香料醬', expiryDate:'2027-01-05', amount:'大部分', opened:true, action:null, maybeOk:false, notes:'開封後需冷藏' },
+  { id:6, name:'Bull Head BBQ Sauce', nameZh:'牛頭牌沙茶醬', category:'亞洲醬料', expiryDate:'2028-01-13', amount:'大部分', opened:false, action:null, maybeOk:false, notes:'未開封，保存良好' },
+  { id:7, name:'Nature-Pac Ginger Paste', nameZh:'薑泥', category:'香料醬', expiryDate:null, amount:'大部分', opened:true, action:null, maybeOk:false, notes:'到期日待確認，開封後需冷藏' },
+  { id:8, name:'花生麵筋', nameZh:'花生麵筋', category:'亞洲醬料', expiryDate:'2026-01-31', amount:'大部分', opened:false, action:'盡快用完', maybeOk:true, notes:'已過期約5個月，封罐未開封，聞過確認後可用' },
+  { id:9, name:'Lee Kum Kee Black Pepper Sauce', nameZh:'李錦記黑椒汁', category:'亞洲醬料', expiryDate:'2027-01-21', amount:'大部分', opened:false, action:null, maybeOk:false, notes:'狀態良好' },
+  { id:10, name:'Basil Pesto', nameZh:'青醬', category:'西式醬料', expiryDate:'2026-09-01', amount:'大部分', opened:true, action:'盡快用完', maybeOk:true, notes:'外觀顏色偏深，已開封請立刻冷藏' },
+  { id:11, name:'Whole Earth Agave Syrup', nameZh:'龍舌蘭糖漿', category:'甜味劑', expiryDate:'2027-10-01', amount:'大部分', opened:false, action:null, maybeOk:false, notes:'有機，低GI，狀態良好' },
+  { id:12, name:'Hoisin Sauce', nameZh:'海鮮醬', category:'亞洲醬料', expiryDate:null, amount:'兩瓶', opened:true, action:'確認是否重複', maybeOk:true, notes:'疑似有兩瓶，先用完一瓶' },
+  { id:13, name:'Pearl River Bridge Light Soy', nameZh:'珠江橋牌金標生抽', category:'醬油', expiryDate:null, amount:'大部分', opened:true, action:null, maybeOk:false, notes:'常用，放爐灶旁' },
+  { id:14, name:'Yamasa Soy Sauce', nameZh:'Yamasa醬油', category:'醬油', expiryDate:null, amount:'大部分', opened:true, action:null, maybeOk:false, notes:'日式醬油' },
+  { id:15, name:'Mirin Seasoning', nameZh:'味醂', category:'日式調味', expiryDate:null, amount:'大部分', opened:true, action:null, maybeOk:false, notes:'開封後建議冷藏' },
+  { id:16, name:'Awase Miso', nameZh:'合わせ味噌', category:'日式調味', expiryDate:null, amount:'大部分', opened:true, action:'移入冰箱', maybeOk:true, notes:'味噌開封後必須冷藏' },
+  { id:17, name:'Heinz Tomato Ketchup', nameZh:'番茄醬', category:'西式醬料', expiryDate:null, amount:'少量', opened:true, action:null, maybeOk:false, notes:'開封後冷藏' },
+  { id:18, name:'Heinz Mayonnaise', nameZh:'美乃滋', category:'西式醬料', expiryDate:null, amount:'大部分', opened:true, action:null, maybeOk:false, notes:'開封後冷藏' },
+  { id:19, name:'Sesame Oil', nameZh:'芝麻油/胡麻油', category:'食用油', expiryDate:null, amount:'兩瓶', opened:true, action:'整合', maybeOk:true, notes:'有兩瓶功能類似，先用完一瓶' },
+  { id:20, name:'Olive Oil', nameZh:'橄欖油', category:'食用油', expiryDate:null, amount:'兩瓶', opened:true, action:'整合', maybeOk:true, notes:'有兩瓶，先用完一瓶' },
+];
+
+// ── Storage ───────────────────────────────────────────────────────────────────
+function loadItems() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return DEFAULT_DATA;
+}
+function saveItems(items) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); } catch(e) {}
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function getStatus(item) {
+  if (!item.expiryDate) return STATUS.UNKNOWN;
+  const exp = new Date(item.expiryDate);
+  const diff = Math.floor((exp - TODAY) / 86400000);
+  if (diff < 0) return item.maybeOk ? STATUS.EXPIRED_MAYBE : STATUS.EXPIRED_DANGER;
+  if (diff <= 90) return STATUS.EXPIRING_SOON;
+  return STATUS.OK;
+}
+function getDaysLabel(item) {
+  if (!item.expiryDate) return null;
+  const diff = Math.floor((new Date(item.expiryDate) - TODAY) / 86400000);
+  if (diff < 0) return `已過期 ${Math.abs(diff)} 天`;
+  if (diff === 0) return '今天到期';
+  if (diff <= 90) return `還剩 ${diff} 天`;
+  return `還剩約 ${Math.floor(diff/30)} 個月`;
+}
+function enrich(item) {
+  return { ...item, status: getStatus(item), daysLabel: getDaysLabel(item) };
+}
+function todayStr() {
+  return new Date().toLocaleDateString('zh-TW', {year:'numeric',month:'2-digit',day:'2-digit'}).replace(/\//g,'/');
+}
+
+// ── App State ─────────────────────────────────────────────────────────────────
+let state = {
+  items: loadItems(),
+  tab: 'list',
+  catFilter: '全部',
+  statusFilter: '全部',
+  search: '',
+  editingId: null,
+  confirmDeleteId: null,
+  showAddForm: false,
+  showImport: false,
+  importText: '',
+  importError: null,
+  importPreview: null,
+  newItem: { name:'', nameZh:'', category:'亞洲醬料', expiryDate:'', amount:'', opened:false, action:'', maybeOk:false, notes:'' },
+};
+
+function setState(patch) {
+  state = { ...state, ...patch };
+  render();
+}
+function setItems(items) {
+  saveItems(items);
+  setState({ items });
+}
+
+// ── Computed ──────────────────────────────────────────────────────────────────
+function getEnriched() { return state.items.map(enrich); }
+
+function getAlerts(enriched) {
+  return enriched
+    .filter(i => i.status === STATUS.EXPIRED_DANGER || i.status === STATUS.EXPIRED_MAYBE ||
+                 i.status === STATUS.EXPIRING_SOON || i.action)
+    .sort((a,b) => {
+      const order = { expired_danger:0, expired_maybe:1, expiring_soon:2, ok:3, unknown:4 };
+      return order[a.status] - order[b.status];
+    });
+}
+
+function getFiltered(enriched) {
+  const labelMap = { '已過期':'expired_danger','過期但看情況':'expired_maybe','即將到期':'expiring_soon','狀態良好':'ok','待確認':'unknown' };
+  return enriched
+    .filter(i => state.catFilter === '全部' || i.category === state.catFilter)
+    .filter(i => state.statusFilter === '全部' || i.status === labelMap[state.statusFilter])
+    .filter(i => !state.search || i.name.toLowerCase().includes(state.search.toLowerCase()) || (i.nameZh||'').includes(state.search))
+    .sort((a,b) => { const o={expired_danger:0,expired_maybe:1,expiring_soon:2,ok:3,unknown:4}; return o[a.status]-o[b.status]; });
+}
+
+function getDupeGroups(items) {
+  const groups = [], seen = new Set();
+  items.forEach(item => {
+    if (seen.has(item.id)) return;
+    const key = ((item.nameZh||item.name||'').toLowerCase().replace(/[（）()\s【】\[\]]/g,'').slice(0,5));
+    if (!key || key.length < 2) return;
+    const matches = items.filter(o => o.id !== item.id && ((o.nameZh||o.name||'').toLowerCase().replace(/[（）()\s【】\[\]]/g,'').slice(0,5)) === key);
+    if (matches.length > 0) {
+      const group = [item, ...matches];
+      group.forEach(g => seen.add(g.id));
+      groups.push(group);
+    }
+  });
+  return groups;
+}
+
+// ── Actions ───────────────────────────────────────────────────────────────────
+function deleteItem(id) { setItems(state.items.filter(i => i.id !== id)); setState({ editingId: null, confirmDeleteId: null }); }
+function updateItem(id, changes) { setItems(state.items.map(i => i.id === id ? {...i,...changes} : i)); }
+function addItem() {
+  const n = state.newItem;
+  if (!n.name && !n.nameZh) return;
+  setItems([...state.items, { ...n, id: Date.now() }]);
+  setState({ showAddForm: false, newItem: { name:'',nameZh:'',category:'亞洲醬料',expiryDate:'',amount:'',opened:false,action:'',maybeOk:false,notes:'' } });
+}
+function parseImport() {
+  try {
+    const clean = state.importText.replace(/```json|```/g,'').trim();
+    const parsed = JSON.parse(clean);
+    const arr = Array.isArray(parsed) ? parsed : [parsed];
+    setState({ importPreview: arr, importError: null });
+  } catch(e) { setState({ importError: 'JSON 格式有誤，請重新複製', importPreview: null }); }
+}
+function confirmImport() {
+  if (!state.importPreview) return;
+  const newOnes = state.importPreview.map((it,i) => ({ ...it, id: Date.now()+i }));
+  setItems([...state.items, ...newOnes]);
+  setState({ showImport: false, importText: '', importPreview: null, importError: null });
+}
+
+// ── Render helpers ────────────────────────────────────────────────────────────
+function h(tag, attrs, ...children) {
+  const el = document.createElement(tag);
+  if (attrs) Object.entries(attrs).forEach(([k,v]) => {
+    if (k === 'className') el.className = v;
+    else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
+    else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2).toLowerCase(), v);
+    else if (k === 'checked') el.checked = v;
+    else if (k === 'value') el.value = v ?? '';
+    else if (k === 'selected') el.selected = v;
+    else if (v !== null && v !== undefined && v !== false) el.setAttribute(k, v);
+  });
+  children.flat(Infinity).forEach(c => {
+    if (c === null || c === undefined || c === false) return;
+    el.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+  });
+  return el;
+}
+
+// ── Components ────────────────────────────────────────────────────────────────
+function renderHeader(enriched) {
+  const alerts = getAlerts(enriched);
+  const danger = alerts.filter(i => i.status === STATUS.EXPIRED_DANGER).length;
+  const warn = alerts.filter(i => i.status === STATUS.EXPIRED_MAYBE || i.status === STATUS.EXPIRING_SOON).length;
+  return h('div', { className:'header' },
+    h('h1', null, '🧂 調味料管理'),
+    h('div', { className:'sub' }, `共 ${state.items.length} 項 · ${todayStr()}`),
+    h('div', { className:'badges' },
+      danger > 0 ? h('span', { className:'badge badge-red' }, `🔴 ${danger} 項需丟棄`) : null,
+      warn > 0 ? h('span', { className:'badge badge-orange' }, `⚠️ ${warn} 項需注意`) : null,
+    )
+  );
+}
+
+function renderTabs(enriched) {
+  const alerts = getAlerts(enriched);
+  const dupes = getDupeGroups(state.items);
+  const tabs = [
+    { key:'list', label:'📋 清單' },
+    { key:'alerts', label:`🚨 處理 (${alerts.length})` },
+    { key:'dupes', label:`🔁 重複${dupes.length > 0 ? ` (${dupes.length})` : ''}` },
+  ];
+  return h('div', { className:'tabs' },
+    ...tabs.map(t => h('button', {
+      className: `tab ${state.tab === t.key ? 'active' : ''}`,
+      onClick: () => setState({ tab: t.key })
+    }, t.label))
+  );
+}
+
+function renderItemCard(item) {
+  const cfg = STATUS_CFG[item.status];
+  const isEditing = state.editingId === item.id;
+  const isConfirmDel = state.confirmDeleteId === item.id;
+
+  const card = h('div', { className: `card ${isEditing ? 'editing' : ''}` });
+
+  // Card body
+  const editBtn = h('button', {
+    className: 'edit-btn',
+    style: { background: isEditing ? '#1e293b' : '#f1f5f9', color: isEditing ? 'white' : '#64748b' },
+    onClick: () => setState({ editingId: isEditing ? null : item.id, confirmDeleteId: null })
+  }, isEditing ? '收起' : '編輯');
+
+  const body = h('div', { className:'card-body' },
+    h('div', { className:'card-icon' }, cfg.icon),
+    h('div', { className:'card-info' },
+      h('div', { className:'card-name' }, item.nameZh || item.name),
+      h('div', { className:'card-sub' }, `${item.name||''}${item.name && item.category ? ' · ' : ''}${item.category||''}`),
+      h('div', { className:'card-tags' },
+        h('span', { className:'tag', style:{ background:cfg.bg, color:cfg.color } }, cfg.label),
+        item.daysLabel ? h('span', { style:{ fontSize:'11px', color:'#64748b' } }, item.daysLabel) : null,
+        item.opened ? h('span', { style:{ fontSize:'11px', color:'#f97316' } }, '已開封') : null,
+        item.amount ? h('span', { style:{ fontSize:'11px', color:'#64748b' } }, `剩：${item.amount}`) : null,
+      ),
+      !isEditing && item.action ? h('div', { className:'card-action-tip' }, `💡 ${item.action}`) : null,
+      !isEditing && item.notes ? h('div', { className:'card-notes-text' }, item.notes) : null,
+    ),
+    editBtn
+  );
+  card.appendChild(body);
+
+  // Edit panel
+  if (isEditing) {
+    let draft = { ...item };
+    const panel = h('div', { className:'edit-panel' });
+
+    const grid = h('div', { className:'edit-grid' });
+    [['到期日','expiryDate','date'],['剩餘量','amount','text'],['建議處理','action','text'],['備註','notes','text']].forEach(([label,key,type]) => {
+      const field = h('div', { className: `edit-field ${key==='notes'?'full':''}` },
+        h('label', { className:'edit-label' }, label),
+        h('input', { className:'edit-input', type, value: draft[key]||'',
+          onInput: e => { draft[key] = e.target.value; }
+        })
+      );
+      grid.appendChild(field);
+    });
+    panel.appendChild(grid);
+
+    const checks = h('div', { className:'edit-checks' });
+    [['opened','已開封'],['maybeOk','過期但可能可用']].forEach(([key,label]) => {
+      const lbl = h('label', null,
+        h('input', { type:'checkbox', checked: draft[key], onChange: e => { draft[key] = e.target.checked; } }),
+        label
+      );
+      checks.appendChild(lbl);
+    });
+    panel.appendChild(checks);
+
+    const actions = h('div', { className:'edit-actions' });
+    const saveBtn = h('button', { className:'btn-save', onClick: () => { updateItem(item.id, draft); setState({ editingId: null, confirmDeleteId: null }); } }, '儲存');
+    actions.appendChild(saveBtn);
+
+    if (isConfirmDel) {
+      actions.appendChild(h('span', { className:'delete-confirm-text' }, '確定刪除？'));
+      actions.appendChild(h('button', { className:'btn-delete-confirm', onClick: () => deleteItem(item.id) }, '確定'));
+      actions.appendChild(h('button', { className:'btn-cancel-delete', onClick: () => setState({ confirmDeleteId: null }) }, '取消'));
+    } else {
+      actions.appendChild(h('button', { className:'btn-delete', onClick: () => setState({ confirmDeleteId: item.id }) }, '刪除'));
+    }
+    panel.appendChild(actions);
+    card.appendChild(panel);
+  }
+  return card;
+}
+
+function renderListTab(enriched) {
+  const filtered = getFiltered(enriched);
+  const wrap = h('div', { className:'section' });
+
+  // Search
+  const searchInput = h('input', {
+    className:'search-input', type:'text', placeholder:'🔍 搜尋調味料...', value: state.search,
+    onInput: e => setState({ search: e.target.value }),
+    style: { marginBottom:'12px', display:'block' }
+  });
+  wrap.appendChild(searchInput);
+
+  // Cat filter
+  const catRow = h('div', { className:'filter-scroll', style:{ marginBottom:'10px' } });
+  CATEGORIES.forEach(cat => {
+    catRow.appendChild(h('button', {
+      className: `chip ${state.catFilter===cat?'active':''}`,
+      onClick: () => setState({ catFilter: cat })
+    }, cat));
+  });
+  wrap.appendChild(catRow);
+
+  // Status filter
+  const statRow = h('div', { className:'filter-scroll', style:{ marginBottom:'16px' } });
+  ['全部','已過期','過期但看情況','即將到期','狀態良好','待確認'].forEach(s => {
+    statRow.appendChild(h('button', {
+      className: `chip-sm ${state.statusFilter===s?'active':''}`,
+      onClick: () => setState({ statusFilter: s })
+    }, s));
+  });
+  wrap.appendChild(statRow);
+
+  // Items
+  const list = h('div', null);
+  filtered.forEach(item => list.appendChild(renderItemCard(item)));
+  wrap.appendChild(list);
+
+  // Add row
+  const addRow = h('div', { className:'add-row' });
+  addRow.appendChild(h('button', { className:'btn-primary', onClick: () => setState({ showImport: !state.showImport, showAddForm: false }) }, '📋 貼上 AI 辨識結果'));
+  addRow.appendChild(h('button', { className:'btn-secondary', onClick: () => setState({ showAddForm: !state.showAddForm, showImport: false }) }, '✏️'));
+  wrap.appendChild(addRow);
+
+  // Import panel
+  if (state.showImport) {
+    const panel = h('div', { className:'panel' },
+      h('div', { className:'panel-title' }, '📋 貼上 Claude 辨識結果'),
+      h('div', { className:'panel-sub' }, '把照片傳給 Claude，收到 JSON 後複製貼在這裡'),
+    );
+    const ta = h('textarea', {
+      className:'import-textarea',
+      placeholder: '[{"nameZh":"甜辣醬","expiryDate":"2027-03-04",...}]',
+      onInput: e => { state.importText = e.target.value; state.importPreview = null; state.importError = null; }
+    });
+    ta.value = state.importText;
+    panel.appendChild(ta);
+
+    if (state.importError) panel.appendChild(h('div', { className:'error-msg' }, `⚠️ ${state.importError}`));
+
+    if (!state.importPreview) {
+      panel.appendChild(h('button', { className:'btn-parse', onClick: parseImport }, '解析 JSON'));
+    } else {
+      const preview = h('div', { className:'preview-box' },
+        h('div', { className:'preview-title' }, `✅ 解析成功，預覽 ${state.importPreview.length} 項：`)
+      );
+      state.importPreview.forEach(it => {
+        preview.appendChild(h('div', { className:'preview-item' },
+          h('strong', null, it.nameZh || it.name || '未命名'),
+          it.expiryDate ? h('span', null, `到期：${it.expiryDate}`) : null,
+          it.category ? h('span', { style:{color:'#94a3b8'} }, it.category) : null,
+        ));
+      });
+      const row = h('div', { style:{ display:'flex', gap:'8px', marginTop:'10px' } },
+        h('button', { className:'btn-confirm', onClick: confirmImport }, '✓ 全部加入清單'),
+        h('button', { className:'btn-reset', onClick: () => setState({ importPreview: null }) }, '重新貼上'),
+      );
+      preview.appendChild(row);
+      panel.appendChild(preview);
+    }
+    panel.appendChild(h('button', { className:'btn-close', onClick: () => setState({ showImport:false, importText:'', importPreview:null, importError:null }) }, '取消'));
+    wrap.appendChild(panel);
+  }
+
+  // Add form
+  if (state.showAddForm) {
+    const panel = h('div', { className:'panel' },
+      h('div', { className:'panel-title' }, '手動新增'),
+    );
+    let draft = { ...state.newItem };
+    [['名稱（英文）','name','text'],['名稱（中文）','nameZh','text'],['到期日','expiryDate','date'],['剩餘量','amount','text'],['備註','notes','text'],['建議處理','action','text']].forEach(([label,key,type]) => {
+      const field = h('div', { className:'form-field' },
+        h('label', { className:'form-label' }, label),
+        h('input', { className:'form-input', type, value:draft[key]||'', onInput: e => { draft[key]=e.target.value; state.newItem=draft; } })
+      );
+      panel.appendChild(field);
+    });
+    const catSel = h('div', { className:'form-field' },
+      h('label', { className:'form-label' }, '分類'),
+      (() => {
+        const sel = h('select', { className:'form-input', onChange: e => { draft.category=e.target.value; state.newItem=draft; } });
+        CATEGORY_OPTIONS.forEach(c => {
+          const opt = h('option', { value:c }, c);
+          if (c === draft.category) opt.selected = true;
+          sel.appendChild(opt);
+        });
+        return sel;
+      })()
+    );
+    panel.appendChild(catSel);
+    const checks = h('div', { className:'form-checks' });
+    [['opened','已開封'],['maybeOk','過期但可能還能用']].forEach(([key,label]) => {
+      checks.appendChild(h('label', null,
+        h('input', { type:'checkbox', checked:draft[key], onChange: e => { draft[key]=e.target.checked; state.newItem=draft; } }),
+        label
+      ));
+    });
+    panel.appendChild(checks);
+    panel.appendChild(h('div', { className:'form-actions' },
+      h('button', { className:'btn-confirm', onClick: () => { state.newItem=draft; addItem(); } }, '新增'),
+      h('button', { className:'btn-reset', onClick: () => setState({ showAddForm:false }) }, '取消'),
+    ));
+    wrap.appendChild(panel);
+  }
+
+  return wrap;
+}
+
+function renderAlertsTab(enriched) {
+  const alerts = getAlerts(enriched);
+  const wrap = h('div', { className:'section' });
+
+  const groups = [
+    { title:'🔴 立刻丟掉', items: alerts.filter(i=>i.status===STATUS.EXPIRED_DANGER) },
+    { title:'🟠 過期但看情況決定', items: alerts.filter(i=>i.status===STATUS.EXPIRED_MAYBE) },
+    { title:'🟡 即將到期，盡快用完', items: alerts.filter(i=>i.status===STATUS.EXPIRING_SOON) },
+    { title:'📌 其他需注意', items: alerts.filter(i=>i.action && (i.status===STATUS.OK||i.status===STATUS.UNKNOWN)) },
+  ].filter(g=>g.items.length>0);
+
+  if (groups.length === 0) {
+    wrap.appendChild(h('div', { className:'empty' }, h('div', { className:'empty-icon' }, '🎉'), h('div', { className:'empty-text' }, '所有調味料狀態良好！')));
+    return wrap;
+  }
+
+  groups.forEach(group => {
+    const grpEl = h('div', { className:'alert-group' },
+      h('div', { className:'alert-group-title' }, group.title)
+    );
+    group.items.forEach(item => {
+      const cfg = STATUS_CFG[item.status];
+      const card = h('div', { className:'alert-card', style:{ background:cfg.bg, borderColor:cfg.border } },
+        h('div', { className:'alert-row' },
+          h('div', null,
+            h('div', { className:'alert-name' }, item.nameZh||item.name),
+            h('div', { className:'alert-en' }, item.name),
+          ),
+          h('div', { className:'alert-days', style:{ color:cfg.color } }, item.daysLabel||'到期日未知'),
+        ),
+        item.action ? h('div', { className:'alert-tip' }, `💡 ${item.action}`) : null,
+        item.notes ? h('div', { className:'alert-note' }, item.notes) : null,
+        item.status === STATUS.EXPIRED_DANGER
+          ? h('button', { className:'btn-done-delete', onClick:()=>deleteItem(item.id) }, '✓ 已丟掉，從清單移除')
+          : null,
+        (item.status === STATUS.EXPIRED_MAYBE || item.action)
+          ? h('button', { className:'btn-done', onClick:()=>updateItem(item.id,{action:null,notes:'已處理'}) }, '✓ 已處理')
+          : null,
+      );
+      grpEl.appendChild(card);
+    });
+    wrap.appendChild(grpEl);
+  });
+  return wrap;
+}
+
+function renderDupesTab() {
+  const groups = getDupeGroups(state.items);
+  const wrap = h('div', { className:'section' });
+
+  if (groups.length === 0) {
+    wrap.appendChild(h('div', { className:'empty' }, h('div', { className:'empty-icon' }, '✅'), h('div', { className:'empty-text' }, '沒有發現重複項目')));
+    return wrap;
+  }
+
+  groups.forEach(group => {
+    const grpEl = h('div', { className:'dupe-group' },
+      h('div', { className:'dupe-title' }, `🔁 疑似重複：${group[0].nameZh||group[0].name}（${group.length} 項）`)
+    );
+    group.forEach(item => {
+      const cfg = STATUS_CFG[enrich(item).status];
+      const enriched = enrich(item);
+      grpEl.appendChild(h('div', { className:'dupe-item' },
+        h('div', { className:'dupe-info' },
+          h('div', { className:'dupe-name' }, item.nameZh||item.name),
+          h('div', { className:'dupe-meta' }, `${item.category||''} · 剩：${item.amount||'?'}`),
+          h('div', { className:'dupe-status', style:{color:cfg.color} }, `${cfg.icon} ${cfg.label}${enriched.daysLabel ? ' · '+enriched.daysLabel : ''}`),
+        ),
+        h('button', { className:'btn-dupe-del', onClick:()=>deleteItem(item.id) }, '刪除'),
+      ));
+    });
+    grpEl.appendChild(h('div', { className:'dupe-hint' }, '👆 保留你要的那個，刪除多餘的'));
+    wrap.appendChild(grpEl);
+  });
+  return wrap;
+}
+
+// ── Main render ───────────────────────────────────────────────────────────────
+function render() {
+  const app = document.getElementById('app');
+  app.innerHTML = '';
+  const enriched = getEnriched();
+  app.appendChild(renderHeader(enriched));
+  app.appendChild(renderTabs(enriched));
+  if (state.tab === 'list') app.appendChild(renderListTab(enriched));
+  else if (state.tab === 'alerts') app.appendChild(renderAlertsTab(enriched));
+  else if (state.tab === 'dupes') app.appendChild(renderDupesTab());
+}
+
+render();
+</script>
+</body>
+</html>
